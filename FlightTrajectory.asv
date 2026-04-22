@@ -1,0 +1,129 @@
+%%The Script below estimates the 2D trajectory of an RC-aircraft taking off from an elevated platform.
+%%Two plots are generated as result. Distance vs Height and Distance vs Time taken.
+
+flightParams = FlightParams();
+timeArray = flightParams.TimeArray;
+j = 1;
+k = 1;
+
+[t, X] = ode45(@(flightParams.TimeArray, X0)system_dynamics(flightParams.TimeArray, flightParams.X0, flightParams), time_array, X0);
+
+figure(1)
+subplot(2, 1, 1)
+plot(X(:, 1), time_array)
+xlim([0 91])
+ylim([0 12])
+ylabel('Time (in s)')
+xlabel('Horizontal Distance (in m)')
+hold on
+grid on
+
+subplot(2, 1, 2)
+plot(X(:, 1), X(:, 3))
+xlim([0 15])
+ylim([0.25 0.7])
+xlabel('Horizontal Distance (in m)')
+ylabel('Vertical Height (in m)')
+xline(2.4, 'r', "Platform end")
+hold on
+grid on
+hold off
+
+%%
+% 
+% while j <= length(Cl) && k <= length(Cd)
+%     x_coordinate = 0;                                              % Horizontal Distance in m
+%     y_coordinate = takeoff_height;                                 % Vertical Distance in m
+%     v_h = v_wind;                                                  % horizontal velocity in m/s
+%     v_v = 0;                                                       % vertical velocity in m/s
+% 
+%     for i = 1:length(time_array)-1
+%         thrust = a - b * v_h;                                      % Thrust as a function of velocity
+%         drag = 0.5 * density * Cd(k) * S * (v_h - v_wind)^2;       % Drag force %%Tailwind during takeoff is not addressed.
+%         lift = 0.5 * density * Cl(j) * S * (v_h - v_wind)^2;       % Lift force
+%         roll_resistance = 9.81 * (weight - lift) * coeff_friction; % total rolling resistance in N
+% 
+%         % x-coordinate calculation
+%         if x_coordinate(i) < max_takeoff_dist && ...
+%             y_coordinate(i) == takeoff_height
+%             acc_h = (thrust - drag - roll_resistance) / mass;      % Acceleration in horizontal direction with rolling resistance
+%         else
+%             acc_h = (thrust - drag) / mass;                        % Acceleration in horizontal direction without rolling resistance
+%         end
+% 
+%         v_h = v_h + acc_h * delta_t;
+%         x_coordinate(i+1) = x_coordinate(i) + v_h * delta_t;
+% 
+%         % y-coordinate calculation
+%         if lift <= weight && x_coordinate(i) <= max_takeoff_dist
+%             y_coordinate(i+1) = takeoff_height;
+%         elseif (lift > weight || x_coordinate(i) > max_takeoff_dist) && y_coordinate(i) >= 0
+%             acc_v = (lift - weight) / mass;                        % Acceleration in vertical direction
+%             v_v = v_v + acc_v * delta_t;
+%             y_coordinate(i+1) = y_coordinate(i) + v_v * delta_t;
+%         else
+%             y_coordinate(i+1) = 0.00;
+%         end
+%     end
+% 
+%     figure(2)
+%     subplot(2, 1, 1)
+%     plot(x_coordinate, time_array)
+%     xlim([0 91])
+%     ylim([0 12])
+%     ylabel('Time (in s)')
+%     xlabel('Horizontal Distance (in m)')
+%     hold on
+%     grid on
+% 
+%     subplot(2, 1, 2)
+%     plot(x_coordinate, y_coordinate)
+%     xlim([0 15])
+%     ylim([0.25 0.7])
+%     xlabel('Horizontal Distance (in m)')
+%     ylabel('Vertical Height (in m)')
+%     xline(2.4, 'r', "Platform end")
+%     hold on
+%     grid on
+% 
+%     j = j + 1;
+%     k = k + 1;
+% end
+% 
+% hold off;
+
+function dydt = system_dynamics(t,  initVals, flightParams)
+
+xCoordinate = initVals(1);
+flightParams.v_h = initVals(2);
+yCoordinate = initVals(3);
+flightParams.v_v = initVals(4);
+
+dydt = zeros(4, 1);
+% thrust = a - b * v_h;                                   % Thrust as a function of velocity
+% drag = 0.5 * density * Cd * S * (v_h - v_wind)^2;       % Drag force %%Tailwind during takeoff is not addressed.
+% lift = 0.5 * density * Cl * S * (v_h - v_wind)^2;       % Lift force
+% roll_resistance = 9.81 * (weight - lift) * coeff_friction;  % total rolling resistance in N
+
+% x-coordinate calculation
+if xCoordinate < flightParams.max_takeoff_dist && ...
+        yCoordinate <= flightParams.takeoff_height
+    acc_h = (flightParams.Thrust - flightParams.Drag - flightParams.RollingResistance) / flightParams.Mass;      % Acceleration in horizontal direction with rolling resistance
+else
+    acc_h = (flightParams.Thrust - flightParams.Drag) / flightParams.Mass;                        % Acceleration in horizontal direction without rolling resistance
+end
+
+% y-coordinate calculation
+if flightParams.Lift <= flightParams.Weight && xCoordinate <= flightParams.max_takeoff_dist
+    acc_v = 0;
+elseif (flightParams.Lift > flightParams.Weight || xCoordinate > flightParams.max_takeoff_dist) && yCoordinate >= 0
+    acc_v = (flightParams.Lift - flightParams.Weight) / flightParams.Mass;                        % Acceleration in vertical direction
+else
+    acc_v = 0.00;
+end
+
+dydt(1) = flightParams.v_h;
+dydt(2) = acc_h;
+dydt(3) = flightParams.v_v;
+dydt(4) = acc_v;
+end
